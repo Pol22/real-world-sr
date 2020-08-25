@@ -69,3 +69,60 @@ class FilterHigh(nn.Module):
             return 0.5 + img * 0.5
         else:
             return img
+
+
+import tensorflow as tf
+
+
+class LowPassFilter(tf.keras.layers.Layer):
+    def __init__(self, recursions=1, kernel_size=9, stride=1):
+        super(LowPassFilter, self).__init__()
+        # TODO make gaussian filter
+        self.filter = tf.keras.layers.AveragePooling2D(
+            pool_size=(kernel_size, kernel_size),
+            strides=(stride, stride),
+            padding='same')
+
+        self.recursions = recursions
+
+    def call(self, inputs):
+        for i in range(self.recursions):
+            result = self.filter(inputs)
+        return result
+
+
+class HighPassFilter(tf.keras.layers.Layer):
+    def __init__(self, recursions=1, kernel_size=9, stride=1, normalize=True):
+        super(HighPassFilter, self).__init__()
+
+        self.filter_low = LowPassFilter(recursions, kernel_size, stride)
+        self.recursions = recursions
+        self.normalize = normalize
+
+    def call(self, inputs):
+        if self.recursions > 1:
+            for i in range(self.recursions - 1):
+                inputs = self.filter_low(inputs)
+        inputs = inputs - self.filter_low(inputs)
+
+        if self.normalize:
+            return 0.5 + inputs * 0.5
+        else:
+            return inputs
+
+
+# from PIL import Image
+# import numpy as np
+
+
+# img = Image.open('401_Gridlock.jpg')
+# arr = np.asarray(img, dtype=np.float32)
+# arr = np.expand_dims(arr, axis=0)
+# lp = LowPassFilter()
+# hp = HighPassFilter()
+# low = lp(arr).numpy().squeeze()
+# high = hp(arr).numpy().squeeze()
+# Image.fromarray(np.uint8(low)).save('low.png')
+# Image.fromarray(np.uint8(high)).save('high.png')
+# Image.fromarray(np.uint8(low + high)).save('sum.png')
+
